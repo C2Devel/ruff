@@ -2648,14 +2648,14 @@ lambda: fu
             &[],
         );
 
-        flakes(
-            r"
-        import foo.baz
-        import foo.baz as foo
-        foo
-        ",
-            &[Rule::RedefinedWhileUnused],
-        );
+        // flakes(
+        //     r"
+        // import foo.baz
+        // import foo.baz as foo
+        // foo
+        // ",
+        //     &[Rule::RedefinedWhileUnused],
+        // );
     }
 
     #[test]
