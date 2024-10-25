@@ -580,8 +580,15 @@ impl<'a> SemanticModel<'a> {
                 .split(".").next().unwrap_or("").to_owned();
 
             match self.bindings[*binding_id].kind {
-                BindingKind::SubmoduleImport(_) if is_name_exist == false => continue,
+                BindingKind::SubmoduleImport(_) if !is_name_exist => continue,
                 BindingKind::WithItemVar => continue,
+                BindingKind::SubmoduleImport(_) => {
+                    result = self.resolve_binding(
+                        *binding_id,
+                        &name_expr.unwrap(),
+                        scope_id,
+                    );
+                },
                 BindingKind::Import(_) => {
 
                     if already_checked_imports.contains(&name.to_string())
@@ -597,13 +604,7 @@ impl<'a> SemanticModel<'a> {
                         scope_id,
                     );
                 }
-                _ => {
-                    result = self.resolve_binding(
-                        *binding_id,
-                        &name_expr.unwrap(),
-                        scope_id,
-                    );
-                }
+                _ => {}
             }
         }
         // end check module import
