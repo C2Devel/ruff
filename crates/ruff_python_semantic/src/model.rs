@@ -570,6 +570,8 @@ impl<'a> SemanticModel<'a> {
             }
         }
 
+        // TODO: need to move the block implementation to resolve_load, but carefully
+        // start check module import
         for (binding_id, scope_id) in binding_ids.iter() {
             let Some(import) = self.binding(*binding_id).as_any_import() else {
                 continue;
@@ -604,6 +606,7 @@ impl<'a> SemanticModel<'a> {
                 }
             }
         }
+        // end check module import
 
         if result.is_none() {
             ReadResult::NotFound
@@ -662,6 +665,7 @@ impl<'a> SemanticModel<'a> {
             let is_class = scope.kind.is_class();
             let is_function = scope.kind.is_function();
             let uses_star_imports = scope.uses_star_imports();
+            let mut is_name = false;
 
             if is_class {
                 // Allow usages of `__class__` within methods, e.g.:
@@ -701,10 +705,30 @@ impl<'a> SemanticModel<'a> {
             if let Some(binding_id) = scope.get(name.id.as_str()) {
                 // Return solved if there is at least one import with a submodule
                 for temp_binding_id in scope.get_all(name.id.as_str()) {
-                    if let BindingKind::SubmoduleImport(..) = &self.bindings[temp_binding_id].kind {
-                        return ReadResult::Resolved(temp_binding_id);
+                    if let BindingKind::Import(_) = &self.bindings[temp_binding_id].kind {
+                        is_name = true;
                     }
                 }
+
+                // Todo: Move the implementation here
+                for temp_binding_id in scope.get_all(name.id.as_str()) {
+                    if let BindingKind::SubmoduleImport(_) = &self
+                        .bindings[temp_binding_id].kind {
+
+                        if !is_name {
+                            return ReadResult::NotFound;
+                        }
+
+                        for reference_id in self.bindings[temp_binding_id].references() {
+                            if self.resolved_references[reference_id].range()
+                                .contains_range(self.bindings[temp_binding_id].range)
+                            {
+                                return ReadResult::Resolved(temp_binding_id);
+                            }
+                        }
+                    }
+                }
+
                 result = self.resolve_binding(
                     binding_id,
                     &name,
