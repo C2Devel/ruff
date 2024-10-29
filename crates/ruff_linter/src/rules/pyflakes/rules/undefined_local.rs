@@ -3,6 +3,7 @@ use std::string::ToString;
 use ruff_diagnostics::{Diagnostic, Violation};
 use ruff_macros::{derive_message_formats, violation};
 use ruff_python_semantic::{Scope, ScopeId};
+use ruff_python_semantic::BindingKind::SubmoduleImport;
 use ruff_text_size::Ranged;
 
 use crate::checkers::ast::Checker;
@@ -61,7 +62,12 @@ pub(crate) fn undefined_local(
                 if let Some(range) = shadowed.references().find_map(|reference_id| {
                     let reference = checker.semantic().reference(reference_id);
                     if reference.scope_id() == scope_id {
-                        Some(reference.range())
+                        // FIXME: ignore submodules
+                        if let SubmoduleImport(..) = shadowed.kind {
+                            None
+                        } else {
+                            Some(reference.range())
+                        }
                     } else {
                         None
                     }
